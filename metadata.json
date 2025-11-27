@@ -1,0 +1,5 @@
+{
+  "name": "High-Rise Scaffolding Fire Sim",
+  "description": "A scientific simulation demonstrating fire spread dynamics on high-rise scaffolding, comparing metal and bamboo structures with and without flammable netting.",
+  "requestFramePermissions": []
+}
