@@ -1,24 +1,16 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { 
-  CellData, CellState, NettingState, DebrisState, MaterialType, NettingType, SimulationConfig, SimulationStats, WeatherType
+  CellData, CellState, NettingState, DebrisState, MaterialType, NettingType, SimulationConfig, SimulationStats, WeatherType, AdvancedParams
 } from '../types';
 import {
   GRID_WIDTH, GRID_HEIGHT, TICK_RATE_MS, AMBIENT_TEMP,
-  IGNITION_TEMP_BAMBOO, IGNITION_TEMP_STYROFOAM, IGNITION_TEMP_NETTING, IGNITION_TEMP_NETTING_FR, FAILURE_TEMP_METAL, SOFTENING_TEMP_METAL, MELT_TEMP_STYROFOAM,
-  FUEL_BAMBOO, FUEL_STYROFOAM, FUEL_NETTING, FUEL_METAL,
-  HEAT_OUTPUT_BAMBOO, HEAT_OUTPUT_STYROFOAM, HEAT_OUTPUT_NETTING, HEAT_OUTPUT_NETTING_FR,
-  CONDUCTIVITY_METAL, CONDUCTIVITY_BAMBOO, CONDUCTIVITY_STYROFOAM, 
-  HEAT_CAPACITY_METAL, HEAT_CAPACITY_BAMBOO,
-  VERTICAL_SPREAD_FACTOR,
-  COOLING_RATE, COOLING_RATE_WET, METAL_COOLING_BONUS, NETTING_FLASHOVER_CHANCE, NETTING_FLASHOVER_CHANCE_FR,
-  DRIP_CHANCE_NETTING, DRIP_CHANCE_STYROFOAM,
-  BAMBOO_IGNITION_CHANCE_DRY, BAMBOO_IGNITION_CHANCE_WET,
-  NETTING_IGNITION_CHANCE_DRY, NETTING_IGNITION_CHANCE_WET
+  FUEL_METAL
 } from '../constants';
 
 interface SimulationCanvasProps {
   config: SimulationConfig;
+  params: AdvancedParams;
   isRunning: boolean;
   onStatsUpdate: (stats: SimulationStats) => void;
   onSimulationEnd: () => void;
@@ -26,18 +18,21 @@ interface SimulationCanvasProps {
 }
 
 const SimulationCanvas: React.FC<SimulationCanvasProps> = ({ 
-  config, isRunning, onStatsUpdate, onSimulationEnd, t
+  config, params, isRunning, onStatsUpdate, onSimulationEnd, t
 }) => {
   // Initialize Grid
-  const createInitialGrid = useCallback((currentConfig: SimulationConfig): CellData[] => {
+  const createInitialGrid = useCallback((currentConfig: SimulationConfig, currentParams: AdvancedParams): CellData[] => {
     const cells: CellData[] = [];
     const hasNetting = currentConfig.netting !== NettingType.NONE;
 
     let initialStructureFuel = FUEL_METAL;
-    if (currentConfig.material === MaterialType.BAMBOO) initialStructureFuel = FUEL_BAMBOO;
+    if (currentConfig.material === MaterialType.BAMBOO) initialStructureFuel = currentParams.FUEL_BAMBOO;
 
     for (let y = 0; y < GRID_HEIGHT; y++) {
       for (let x = 0; x < GRID_WIDTH; x++) {
+        // Determine if this specific cell has styrofoam based on coverage probability
+        const hasStyrofoam = Math.random() < currentConfig.styrofoamCoverage;
+
         cells.push({
           id: `${x}-${y}`,
           x,
@@ -46,18 +41,18 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
           fuel: initialStructureFuel,
           state: CellState.NORMAL,
           
-          nettingFuel: hasNetting ? FUEL_NETTING : 0,
+          nettingFuel: hasNetting ? currentParams.FUEL_NETTING : 0,
           nettingState: hasNetting ? NettingState.INTACT : NettingState.NONE,
 
-          styrofoamFuel: currentConfig.hasStyrofoam ? FUEL_STYROFOAM : 0,
-          styrofoamState: currentConfig.hasStyrofoam ? DebrisState.INTACT : DebrisState.NONE,
+          styrofoamFuel: hasStyrofoam ? currentParams.FUEL_STYROFOAM : 0,
+          styrofoamState: hasStyrofoam ? DebrisState.INTACT : DebrisState.NONE,
         });
       }
     }
     return cells;
   }, []);
 
-  const [cells, setCells] = useState<CellData[]>(() => createInitialGrid(config));
+  const [cells, setCells] = useState<CellData[]>(() => createInitialGrid(config, params));
   const [tickCount, setTickCount] = useState(0);
   const requestRef = useRef<number>(0);
   const lastTickRef = useRef<number>(0);
@@ -76,7 +71,7 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
 
   // Reset grid when config changes
   useEffect(() => {
-    setCells(createInitialGrid(config));
+    setCells(createInitialGrid(config, params));
     setTickCount(0);
     statsRef.current = {
       peakTemp: AMBIENT_TEMP,
@@ -89,7 +84,7 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
       fireDuration: 0,
     };
     onStatsUpdate(statsRef.current);
-  }, [config, createInitialGrid, onStatsUpdate]);
+  }, [config, params, createInitialGrid, onStatsUpdate]);
 
   // Simulation Logic Step
   const simulateStep = useCallback(() => {
@@ -101,14 +96,14 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
       const isWet = config.weather === WeatherType.WET;
       
       // Material Properties
-      const conductivity = isMetal ? CONDUCTIVITY_METAL : CONDUCTIVITY_BAMBOO;
-      const heatCapacity = isMetal ? HEAT_CAPACITY_METAL : HEAT_CAPACITY_BAMBOO;
+      const conductivity = isMetal ? params.CONDUCTIVITY_METAL : params.CONDUCTIVITY_BAMBOO;
+      const heatCapacity = isMetal ? params.HEAT_CAPACITY_METAL : params.HEAT_CAPACITY_BAMBOO;
 
       // Netting Properties based on type
       const isFR = config.netting === NettingType.FIRE_RESISTANT;
-      let spreadChance = isFR ? NETTING_FLASHOVER_CHANCE_FR : NETTING_FLASHOVER_CHANCE;
-      const nettingHeatOutput = isFR ? HEAT_OUTPUT_NETTING_FR : HEAT_OUTPUT_NETTING;
-      const nettingIgnitionTemp = isFR ? IGNITION_TEMP_NETTING_FR : IGNITION_TEMP_NETTING;
+      let spreadChance = isFR ? params.NETTING_FLASHOVER_CHANCE_FR : params.NETTING_FLASHOVER_CHANCE;
+      const nettingHeatOutput = isFR ? params.HEAT_OUTPUT_NETTING_FR : params.HEAT_OUTPUT_NETTING;
+      const nettingIgnitionTemp = isFR ? params.IGNITION_TEMP_NETTING_FR : params.IGNITION_TEMP_NETTING;
 
       // Weather dampens netting flashover spread
       if (isWet) {
@@ -130,6 +125,11 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
            activeFire++;
            nextCell.nettingFuel -= 5;
            
+           // Direct Flame Contact: Ignite Styrofoam in same cell
+           if (nextCell.styrofoamState === DebrisState.INTACT) {
+             nextCell.styrofoamState = DebrisState.BURNING;
+           }
+
            // Flashover upwards
            if (cell.y > 0) {
              const aboveIdx = getIndex(cell.x, cell.y - 1);
@@ -141,7 +141,7 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
            }
 
            // Downward Dripping (Non-Compliant Netting)
-           if (!isFR && cell.y < GRID_HEIGHT - 1 && Math.random() < DRIP_CHANCE_NETTING) {
+           if (!isFR && cell.y < GRID_HEIGHT - 1 && Math.random() < params.DRIP_CHANCE_NETTING) {
              const belowIdx = getIndex(cell.x, cell.y + 1);
              const belowCell = nextCells[belowIdx];
              // Transfer heat and potentially ignite below
@@ -181,18 +181,39 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
               activeFire++;
               nextCell.styrofoamFuel -= 4; // Burns fast
               
+              // Direct Open Flame Spread (Chaotic)
+              const flameNeighbors = [
+                {dx: 0, dy: -1, chance: 0.90}, // Up: High chance
+                {dx: 0, dy: 1, chance: 0.05},  // Down: Very Low
+                {dx: -1, dy: 0, chance: 0.20}, // Left: Lower chance
+                {dx: 1, dy: 0, chance: 0.20}   // Right: Lower chance
+              ];
+              
+              flameNeighbors.forEach(({dx, dy, chance}) => {
+                 const nx = cell.x + dx;
+                 const ny = cell.y + dy;
+                 if (nx >= 0 && nx < GRID_WIDTH && ny >= 0 && ny < GRID_HEIGHT) {
+                    const nIdx = getIndex(nx, ny);
+                    if (Math.random() < chance) {
+                        if (nextCells[nIdx].nettingState === NettingState.INTACT && !isFR) {
+                            nextCells[nIdx].nettingState = NettingState.BURNING;
+                        }
+                        if (nextCells[nIdx].styrofoamState === DebrisState.INTACT) {
+                            nextCells[nIdx].styrofoamState = DebrisState.BURNING;
+                        }
+                    }
+                 }
+              });
+
               // Dripping Molten Fire Logic
-              // If burning, it drips aggressively downwards
-              if (cell.y < GRID_HEIGHT - 1 && Math.random() < DRIP_CHANCE_STYROFOAM) {
+              if (cell.y < GRID_HEIGHT - 1 && Math.random() < params.DRIP_CHANCE_STYROFOAM) {
                   const belowIdx = getIndex(cell.x, cell.y + 1);
                   const belowCell = nextCells[belowIdx];
-                  belowCell.temp += 150; // Molten plastic carries high heat
+                  belowCell.temp += 150; 
                   
-                  // Instantly ignite styrofoam below if present
                   if (belowCell.styrofoamState === DebrisState.INTACT) {
                       belowCell.styrofoamState = DebrisState.BURNING;
                   }
-                  // Or ignite netting
                   if (belowCell.nettingState === NettingState.INTACT) {
                       belowCell.nettingState = NettingState.BURNING;
                   }
@@ -219,12 +240,12 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
 
         // B. Heat from Styrofoam
         if (nextCell.styrofoamState === DebrisState.BURNING) {
-             heatInput += HEAT_OUTPUT_STYROFOAM;
+             heatInput += params.HEAT_OUTPUT_STYROFOAM;
         }
 
         // C. Heat from Structure
         if (cell.state === CellState.BURNING) {
-            heatInput += HEAT_OUTPUT_BAMBOO;
+            heatInput += params.HEAT_OUTPUT_BAMBOO;
             nextCell.fuel -= 1;
             if (nextCell.fuel <= 0) {
                  nextCell.state = isMetal ? CellState.NORMAL : CellState.BURNT;
@@ -232,50 +253,45 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
         }
 
         // D. Apply Heat based on Capacity
-        // Low Capacity = High Temp Rise for same energy
         newTemp += heatInput / heatCapacity;
 
         // E. Ignition / Failure Checks
         if (nextCell.state !== CellState.BURNT && nextCell.state !== CellState.COLLAPSED) {
             // Structure Ignition (Bamboo Only)
-            if (!isMetal && newTemp >= IGNITION_TEMP_BAMBOO && nextCell.state !== CellState.BURNING) {
+            if (!isMetal && newTemp >= params.IGNITION_TEMP_BAMBOO && nextCell.state !== CellState.BURNING) {
                 // Weather Probability Check
-                const ignitionProbability = isWet ? BAMBOO_IGNITION_CHANCE_WET : BAMBOO_IGNITION_CHANCE_DRY;
+                const ignitionProbability = isWet ? params.BAMBOO_IGNITION_CHANCE_WET : params.BAMBOO_IGNITION_CHANCE_DRY;
                 if (Math.random() < ignitionProbability) {
                    nextCell.state = CellState.BURNING;
                 }
             }
             // Metal Failure
-            if (isMetal && newTemp >= FAILURE_TEMP_METAL) {
+            if (isMetal && newTemp >= params.FAILURE_TEMP_METAL) {
                 nextCell.state = CellState.COLLAPSED;
             }
         }
 
         // Styrofoam Ignition & Melting
         if (nextCell.styrofoamState === DebrisState.INTACT) {
-             // Ignition
-             if (newTemp >= IGNITION_TEMP_STYROFOAM) {
+             if (newTemp >= params.IGNITION_TEMP_STYROFOAM) {
                  nextCell.styrofoamState = DebrisState.BURNING;
              } 
-             // Melting Hazard (pre-ignition but dangerous if external fire drops)
-             else if (newTemp >= MELT_TEMP_STYROFOAM) {
-                 // No state change yet, but easier to ignite?
+             else if (newTemp >= params.MELT_TEMP_STYROFOAM) {
+                 // No state change yet
              }
         }
 
         // Netting Ignition (Thermal)
         if (nextCell.nettingState === NettingState.INTACT && newTemp >= nettingIgnitionTemp) {
-             const nettingIgnitionChance = isWet ? NETTING_IGNITION_CHANCE_WET : NETTING_IGNITION_CHANCE_DRY;
+             const nettingIgnitionChance = isWet ? params.NETTING_IGNITION_CHANCE_WET : params.NETTING_IGNITION_CHANCE_DRY;
              if (Math.random() < nettingIgnitionChance) {
                  nextCell.nettingState = NettingState.BURNING;
              }
         }
 
         // F. Cooling
-        // Styrofoam insulates, reducing cooling if present and intact
-        // Wet weather increases cooling rate
-        let coolingFactor = isWet ? COOLING_RATE_WET : COOLING_RATE;
-        if (isMetal) coolingFactor += METAL_COOLING_BONUS;
+        let coolingFactor = isWet ? params.COOLING_RATE_WET : params.COOLING_RATE;
+        if (isMetal) coolingFactor += params.METAL_COOLING_BONUS;
         
         if (nextCell.styrofoamState === DebrisState.INTACT) {
             coolingFactor *= 0.5; // Trap heat
@@ -285,17 +301,12 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
         nextCell.temp = newTemp;
       }
 
-      // --- PHASE 4: THERMAL DIFFUSION (Multi-Pass for Metal) ---
-      // Metal has high conductivity, meaning heat spreads "faster" than the simulation tick rate.
+      // --- PHASE 4: THERMAL DIFFUSION ---
       const diffusionPasses = isMetal ? 4 : 1; 
       
       let activeConductivity = conductivity;
-      if (config.hasStyrofoam) {
-          activeConductivity = (activeConductivity + CONDUCTIVITY_STYROFOAM) / 2;
-      }
 
       for (let pass = 0; pass < diffusionPasses; pass++) {
-        // Use a temporary array for diffusion deltas for this pass
         const diffusions = new Float32Array(prevCells.length);
         
         for (let y = 0; y < GRID_HEIGHT; y++) {
@@ -304,7 +315,7 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
               const currentTemp = nextCells[idx].temp;
               
               const neighbors = [
-                { dx: 0, dy: -1, factor: VERTICAL_SPREAD_FACTOR }, 
+                { dx: 0, dy: -1, factor: params.VERTICAL_SPREAD_FACTOR }, 
                 { dx: 0, dy: 1, factor: 0.1 },
                 { dx: -1, dy: 0, factor: 0.15 },
                 { dx: 1, dy: 0, factor: 0.15 },
@@ -324,7 +335,6 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
             }
         }
 
-        // Apply this pass's diffusion
         for (let i = 0; i < nextCells.length; i++) {
             nextCells[i].temp += diffusions[i];
         }
@@ -344,7 +354,6 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
           }
       }
       
-      // Recount active fire accurately for stats
       activeFire = nextCells.filter(c => 
           c.state === CellState.BURNING || 
           c.nettingState === NettingState.BURNING || 
@@ -370,7 +379,7 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
 
       return nextCells;
     });
-  }, [config, onSimulationEnd]);
+  }, [config, params, onSimulationEnd]);
 
 
   const loop = (time: number) => {
@@ -401,14 +410,12 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
       if (next[startIdx]) {
         next[startIdx].temp = 800; 
         
-        // Ignite everything at source
         if (next[startIdx].nettingState !== NettingState.NONE) {
             next[startIdx].nettingState = NettingState.BURNING;
         }
         if (next[startIdx].styrofoamState !== DebrisState.NONE) {
             next[startIdx].styrofoamState = DebrisState.BURNING;
         }
-        // Force ignite bamboo regardless of weather for the starter cell
         if (config.material === MaterialType.BAMBOO) {
             next[startIdx].state = CellState.BURNING;
         }
@@ -435,7 +442,7 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
      } else {
         switch (config.material) {
             case MaterialType.METAL:
-                if (cell.temp > SOFTENING_TEMP_METAL) classes += "bg-slate-400 border border-red-900 "; 
+                if (cell.temp > params.SOFTENING_TEMP_METAL) classes += "bg-slate-400 border border-red-900 "; 
                 else classes += "bg-slate-500 border border-slate-600 ";
                 break;
             case MaterialType.BAMBOO:

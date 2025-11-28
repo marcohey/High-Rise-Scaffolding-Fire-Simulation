@@ -5,7 +5,7 @@ export const TRANSLATIONS = {
   EN: {
     appTitle: "High-Rise Scaffolding Fire Simulation",
     appDescription: "Simulation comparing Bamboo vs Metal scaffolding risks, analysing the impact of flammable netting and site debris on fire spread.",
-    footerDisclaimer: "This simulation is developed using Gemini and should be further scrutinised by engineers / scientists. Illustrative purpose only. Version 1.1.0",
+    footerDisclaimer: "Simulates: Chimney Effect, Molten Dripping, Flashover & Thermal Conductivity. Developed using Gemini for illustrative purposes only. Version 1.2.0",
     
     // Controls
     config: "Config",
@@ -27,6 +27,16 @@ export const TRANSLATIONS = {
     reset: "Reset Simulation",
     dryTitle: "Higher Combustion Chance",
     wetTitle: "Lower Combustion Chance (Wet/Humid)",
+    advancedSettings: "Advanced Settings",
+
+    // Advanced Settings Modal
+    advancedSettingsTitle: "Simulation Parameters",
+    settingsTempHeader: "Thermal Thresholds",
+    settingsFuelHeader: "Fuel Load Units",
+    settingsHeatHeader: "Heat Generation Rate",
+    settingsProbHeader: "Probabilities",
+    resetDefaults: "Reset to Defaults",
+    saveChanges: "Save & Close",
 
     // Analysis Panel
     liveTelemetry: "Live Telemetry",
@@ -62,7 +72,7 @@ export const TRANSLATIONS = {
   TC: {
     appTitle: "高層樓宇棚架火災模擬",
     appDescription: "模擬比較竹棚與金屬棚架的風險，分析棚網和發泡膠對火勢蔓延的影響。",
-    footerDisclaimer: "本模擬用 Gemini 開發，僅供參考，應由工程師/科學家進一步審視。Version 1.1.0",
+    footerDisclaimer: "模擬內容：煙囪效應、熔滴、閃燃及熱傳導。本模擬用以 Gemini 開發僅供參考。Version 1.2.0",
     
     // Controls
     config: "設定",
@@ -84,6 +94,16 @@ export const TRANSLATIONS = {
     reset: "重置模擬",
     dryTitle: "燃燒機率較高",
     wetTitle: "燃燒機率較低 (潮濕)",
+    advancedSettings: "進階設定",
+
+    // Advanced Settings Modal
+    advancedSettingsTitle: "模擬參數設定",
+    settingsTempHeader: "熱閾值 (Thermal Thresholds)",
+    settingsFuelHeader: "燃料單位 (Fuel Load)",
+    settingsHeatHeader: "熱釋放率 (Heat Generation)",
+    settingsProbHeader: "概率 (Probabilities)",
+    resetDefaults: "恢復預設",
+    saveChanges: "儲存並關閉",
 
     // Analysis Panel
     liveTelemetry: "實時數據",

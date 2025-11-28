@@ -3,10 +3,12 @@ import React, { useState, useCallback } from 'react';
 import SimulationCanvas from './components/SimulationCanvas';
 import Controls from './components/Controls';
 import AnalysisPanel from './components/AnalysisPanel';
-import { SimulationConfig, MaterialType, NettingType, SimulationStats, WeatherType, Language } from './types';
+import AdvancedSettings from './components/AdvancedSettings';
+import { SimulationConfig, MaterialType, NettingType, SimulationStats, WeatherType, Language, StyrofoamCoverage, AdvancedParams } from './types';
+import { DEFAULT_PARAMS } from './constants';
 import { generateAnalysis } from './services/geminiService';
 import { TRANSLATIONS } from './translations';
-import { Globe } from 'lucide-react';
+import { Globe, Settings } from 'lucide-react';
 
 const App: React.FC = () => {
   const [language, setLanguage] = useState<Language>('TC');
@@ -15,10 +17,13 @@ const App: React.FC = () => {
   const [config, setConfig] = useState<SimulationConfig>({
     material: MaterialType.BAMBOO,
     netting: NettingType.NONE,
-    hasStyrofoam: false,
+    styrofoamCoverage: StyrofoamCoverage.NONE,
     windSpeed: 2,
     weather: WeatherType.DRY,
   });
+
+  const [params, setParams] = useState<AdvancedParams>(DEFAULT_PARAMS);
+  const [showSettings, setShowSettings] = useState(false);
 
   const [isRunning, setIsRunning] = useState(false);
   const [stats, setStats] = useState<SimulationStats>({
@@ -67,13 +72,19 @@ const App: React.FC = () => {
     setIsRunning(false);
     setIsAnalyzing(true);
     try {
-      const result = await generateAnalysis(config.material, config.netting, config.hasStyrofoam, config.weather, stats, language);
+      const result = await generateAnalysis(config.material, config.netting, config.styrofoamCoverage, config.weather, stats, language);
       setAnalysis(result);
     } catch (e) {
       console.error(e);
     } finally {
       setIsAnalyzing(false);
     }
+  };
+
+  const handleSaveParams = (newParams: AdvancedParams) => {
+    setParams(newParams);
+    setShowSettings(false);
+    handleReset(); // Reset simulation so physics changes take effect cleanly
   };
 
   return (
@@ -87,13 +98,22 @@ const App: React.FC = () => {
             {t.appDescription}
           </p>
         </div>
-        <button 
-          onClick={toggleLanguage}
-          className="self-start md:self-auto bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 px-3 py-1.5 rounded-lg flex items-center gap-2 text-sm font-semibold transition-colors shrink-0"
-        >
-          <Globe size={16} />
-          {language === 'EN' ? '中文' : 'English'}
-        </button>
+        <div className="flex gap-2 self-start md:self-auto">
+          <button 
+            onClick={() => setShowSettings(true)}
+            className="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 px-3 py-1.5 rounded-lg flex items-center gap-2 text-sm font-semibold transition-colors shrink-0"
+          >
+            <Settings size={16} />
+            <span className="hidden sm:inline">{t.advancedSettings}</span>
+          </button>
+          <button 
+            onClick={toggleLanguage}
+            className="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 px-3 py-1.5 rounded-lg flex items-center gap-2 text-sm font-semibold transition-colors shrink-0"
+          >
+            <Globe size={16} />
+            {language === 'EN' ? '中文' : 'English'}
+          </button>
+        </div>
       </header>
 
       {/* Grid Layout: Enters side-by-side mode on 'md' (Tablets) instead of 'lg' */}
@@ -122,6 +142,7 @@ const App: React.FC = () => {
 
                    <SimulationCanvas 
                      config={config} 
+                     params={params}
                      isRunning={isRunning} 
                      onStatsUpdate={handleStatsUpdate}
                      onSimulationEnd={handleSimulationEnd}
@@ -153,6 +174,15 @@ const App: React.FC = () => {
            />
         </div>
       </main>
+
+      {showSettings && (
+        <AdvancedSettings 
+          params={params} 
+          onSave={handleSaveParams} 
+          onClose={() => setShowSettings(false)}
+          t={t}
+        />
+      )}
 
       <footer className="mt-8 py-4 border-t border-gray-800 text-center text-gray-500 text-xs">
          {t.footerDisclaimer}

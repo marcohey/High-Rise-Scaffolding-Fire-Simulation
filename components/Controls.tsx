@@ -1,7 +1,7 @@
 
 import React from 'react';
-import { MaterialType, NettingType, SimulationConfig, WeatherType } from '../types';
-import { Play, RotateCcw, Flame, ShieldAlert, Zap, ShieldCheck, Box, TriangleAlert, Sun, Cloud } from 'lucide-react';
+import { MaterialType, NettingType, SimulationConfig, WeatherType, StyrofoamCoverage } from '../types';
+import { RotateCcw, Flame, ShieldAlert, ShieldCheck, Box, Sun, Cloud } from 'lucide-react';
 
 interface ControlsProps {
   config: SimulationConfig;
@@ -17,7 +17,6 @@ const Controls: React.FC<ControlsProps> = ({ config, setConfig, isRunning, onSta
     <div className="bg-gray-800 p-4 rounded-xl border border-gray-700 space-y-3 shadow-lg">
       <div className="flex items-center justify-between mb-1">
         <h2 className="text-sm font-bold text-gray-300 flex items-center gap-1.5 uppercase tracking-wider">
-          <Zap size={14} className="text-yellow-400" />
           {t.config}
         </h2>
         {isRunning && (
@@ -88,7 +87,7 @@ const Controls: React.FC<ControlsProps> = ({ config, setConfig, isRunning, onSta
         </div>
       </div>
 
-      {/* Netting Selection (Moved Up) */}
+      {/* Netting Selection */}
       <div className="space-y-1">
         <label className="text-[10px] font-semibold text-gray-500 uppercase">{t.netting}</label>
         <div className="grid grid-cols-3 gap-1">
@@ -136,23 +135,60 @@ const Controls: React.FC<ControlsProps> = ({ config, setConfig, isRunning, onSta
         </div>
       </div>
 
-      {/* Site Hazards (Moved Down) */}
+      {/* Site Hazards (Styrofoam Coverage) */}
       <div className="space-y-1">
-            <label className="text-[10px] font-semibold text-gray-500 uppercase">{t.hazards}</label>
-            <button
-              onClick={() => !isRunning && setConfig({ ...config, hasStyrofoam: !config.hasStyrofoam })}
-              className={`w-full p-2 rounded-md border text-left transition-all flex items-center justify-between h-[34px] ${
-                config.hasStyrofoam
-                  ? 'bg-orange-900/30 border-orange-500/50 text-orange-200'
-                  : 'bg-gray-700/50 border-gray-600 text-gray-400 hover:bg-gray-700'
-              }`}
-              disabled={isRunning}
-            >
-              <span className="font-bold text-xs flex items-center gap-1.5">
-                <Box size={12}/> {t.styrofoam}
-              </span>
-              {config.hasStyrofoam && <TriangleAlert size={12} className="text-orange-500" />}
-            </button>
+            <label className="text-[10px] font-semibold text-gray-500 uppercase flex items-center gap-1">
+              {t.hazards} <span className="text-orange-500">({t.styrofoam})</span>
+            </label>
+            <div className="grid grid-cols-4 gap-1">
+               <button
+                  onClick={() => !isRunning && setConfig({ ...config, styrofoamCoverage: StyrofoamCoverage.NONE })}
+                  className={`p-2 rounded-md border text-center transition-all ${
+                    config.styrofoamCoverage === StyrofoamCoverage.NONE
+                      ? 'bg-gray-600 border-gray-400 text-white'
+                      : 'bg-gray-700/50 border-gray-600 text-gray-400 hover:bg-gray-700'
+                  }`}
+                  disabled={isRunning}
+               >
+                  <span className="text-xs font-bold">{t.none}</span>
+               </button>
+               
+               <button
+                  onClick={() => !isRunning && setConfig({ ...config, styrofoamCoverage: StyrofoamCoverage.LOW })}
+                  className={`p-2 rounded-md border text-center transition-all ${
+                    config.styrofoamCoverage === StyrofoamCoverage.LOW
+                      ? 'bg-orange-900/30 border-orange-500/50 text-orange-200'
+                      : 'bg-gray-700/50 border-gray-600 text-gray-400 hover:bg-gray-700'
+                  }`}
+                  disabled={isRunning}
+               >
+                  <span className="text-xs font-bold">33%</span>
+               </button>
+
+               <button
+                  onClick={() => !isRunning && setConfig({ ...config, styrofoamCoverage: StyrofoamCoverage.MEDIUM })}
+                  className={`p-2 rounded-md border text-center transition-all ${
+                    config.styrofoamCoverage === StyrofoamCoverage.MEDIUM
+                      ? 'bg-orange-900/50 border-orange-500 text-orange-100'
+                      : 'bg-gray-700/50 border-gray-600 text-gray-400 hover:bg-gray-700'
+                  }`}
+                  disabled={isRunning}
+               >
+                  <span className="text-xs font-bold">66%</span>
+               </button>
+
+               <button
+                  onClick={() => !isRunning && setConfig({ ...config, styrofoamCoverage: StyrofoamCoverage.HIGH })}
+                  className={`p-2 rounded-md border text-center transition-all ${
+                    config.styrofoamCoverage === StyrofoamCoverage.HIGH
+                      ? 'bg-orange-600 border-orange-400 text-white'
+                      : 'bg-gray-700/50 border-gray-600 text-gray-400 hover:bg-gray-700'
+                  }`}
+                  disabled={isRunning}
+               >
+                  <span className="text-xs font-bold">100%</span>
+               </button>
+            </div>
       </div>
 
       {/* Actions */}

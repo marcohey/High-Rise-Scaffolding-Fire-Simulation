@@ -1,9 +1,12 @@
 
-import { MaterialType, NettingType, SimulationStats, WeatherType, Language } from "../types";
+import { MaterialType, NettingType, SimulationStats, WeatherType, Language, StyrofoamCoverage } from "../types";
 
 // Key generation helper
-const getKey = (material: MaterialType, netting: NettingType, hasStyrofoam: boolean) => 
-  `${material}_${netting}_${hasStyrofoam}`;
+const getKey = (material: MaterialType, netting: NettingType, styrofoamCoverage: StyrofoamCoverage) => {
+    // We map any non-zero coverage to 'true' for the existing analysis database to preserve logic
+    const hasStyrofoam = styrofoamCoverage !== StyrofoamCoverage.NONE;
+    return `${material}_${netting}_${hasStyrofoam}`;
+}
 
 // Analysis Database supporting multiple languages
 const ANALYSIS_DB: Record<string, { EN: string, TC: string }> = {
@@ -73,7 +76,7 @@ const ANALYSIS_DB: Record<string, { EN: string, TC: string }> = {
 export const generateAnalysis = async (
   material: MaterialType,
   netting: NettingType,
-  hasStyrofoam: boolean,
+  styrofoamCoverage: StyrofoamCoverage,
   weather: WeatherType,
   stats: SimulationStats,
   lang: Language
@@ -81,11 +84,10 @@ export const generateAnalysis = async (
   // Simulate network delay for realism
   await new Promise(resolve => setTimeout(resolve, 600));
 
-  const key = getKey(material, netting, hasStyrofoam);
+  const key = getKey(material, netting, styrofoamCoverage);
   const baseAnalysis = ANALYSIS_DB[key]?.[lang] || (lang === 'TC' ? "此配置暫無分析。" : "Analysis not available for this configuration.");
   
   let weatherContext = "";
-  
   if (weather === WeatherType.WET) {
       weatherContext = lang === 'TC' 
         ? " 此外，潮濕的天氣條件通過增加冷卻速率並降低點燃概率，抑制了火勢的發展。"
@@ -94,6 +96,15 @@ export const generateAnalysis = async (
       weatherContext = lang === 'TC'
         ? " 此外，乾燥的天氣條件顯著加速了蔓延，因為缺乏水分使材料在達到臨界溫度時立即點燃。"
         : " Additionally, dry weather conditions significantly accelerated the spread, as the lack of moisture allowed materials to ignite instantly upon reaching critical temperatures.";
+  }
+
+  // Add specific note about Styrofoam coverage intensity
+  let coverageContext = "";
+  if (styrofoamCoverage !== StyrofoamCoverage.NONE) {
+      const percentage = (styrofoamCoverage * 100).toFixed(0) + "%";
+      coverageContext = lang === 'TC'
+        ? `\n\n發泡膠覆蓋率為 ${percentage}，${styrofoamCoverage > 0.5 ? "大量助燃物顯著加劇了熱量釋放與熔滴效應。" : "助燃物局部加劇了火勢。"}`
+        : `\n\nStyrofoam coverage was ${percentage}. ${styrofoamCoverage > 0.5 ? "The high volume of accelerant significantly increased heat output and molten dripping." : "The debris locally intensified the fire."}`;
   }
 
   // Append dynamic stats summary
@@ -114,5 +125,5 @@ export const generateAnalysis = async (
     - ${durationLabel}: ${stats.fireDuration} ${ticksLabel}.
   `;
 
-  return `${baseAnalysis}${weatherContext}\n\n${summary}`;
+  return `${baseAnalysis}${weatherContext}${coverageContext}\n\n${summary}`;
 };
